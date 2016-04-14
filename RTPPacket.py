@@ -5,11 +5,12 @@ import sys, select, pickle
 
 class RTPPacket:
 
-    def __init__(self, destIP="", srcPort=0, destPort=0, seqNum=0, ackNum=0, dataToSend="", fileReceived=""): #, windowSize, checkSum, type, padding):
+    def __init__(self, destIP="", destPort=0, srcPort=0, packetType="", seqNum=0, ackNum=0, dataToSend="", fileReceived=""): #, windowSize, checkSum, type, padding):
         if fileReceived is "":
             self.destIP = destIP
-            self.srcPort = srcPort
             self.destPort = destPort
+            self.srcPort = srcPort
+            self.packetType = packetType
             self.seqNum = seqNum
             self.ackNum = ackNum
             self.data = dataToSend
@@ -17,8 +18,9 @@ class RTPPacket:
             "Should construct packet variable from bit stream version"
             packetReceived = pickle.loads(fileReceived)
             self.destIP = packetReceived.destIP
-            self.srcPort = packetReceived.srcPort
             self.destPort = packetReceived.destPort
+            self.srcPort = packetReceived.srcPort
+            self.packetType = packetReceived.packetType
             self.seqNum = packetReceived.seqNum
             self.ackNum = packetReceived.ackNum
             self.data = packetReceived.data

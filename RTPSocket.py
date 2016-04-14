@@ -20,20 +20,19 @@ class RTPSocket:
 
     def sendPacket(self, packetToSend):
         "sends RTPPacket to where it should go"
-        self.mainSocket.sendto(packetToSend.getFileToSend(),(packetToSend.destIP, 8591))
+        portToSendTo = 8591
+        if self.mainSocket.getsockname()[1] == 8591:
+            portToSendTo = 8592
+        self.mainSocket.sendto(packetToSend.getFileToSend(),(packetToSend.destIP, portToSendTo))
         return
 
     def recvPacket(self):
         "return packet deciphered from data bits"
         while 1:
             message, clientAddress = self.mainSocket.recvfrom(2048)
-            packetReceived = RTPPacket("", 0, 0, 0, 0, "", message)
-            #if packetReceived:
-                #print "Packet Received"
-                #print packetReceived.destPort
-                #print packetReceived
-                #print message
+            packetReceived = RTPPacket("", 0, 0, "", 0, 0, "", message)
             if packetReceived.destPort == self.portNumber:
+                print "\nPacket Received at port " + str(packetReceived.destPort) + "\n\tType: " + packetReceived.packetType + "\n\tSequence Number: " + str(packetReceived.seqNum) + "\n\tACK Number: " + str(packetReceived.ackNum) + "\n\tMessage: " + packetReceived.data
                 return packetReceived
 
 
