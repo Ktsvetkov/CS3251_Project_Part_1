@@ -11,7 +11,6 @@ class RTPSocketManager:
     # INITIALIZATION
     ####################
     def __init__(self):
-        sys.setrecursionlimit(922337203) #between 9223372036 and 922337203
         self.portsAvailable = []
         self.portsTaken = []
         self.sockets = []
@@ -71,15 +70,14 @@ class RTPSocketManager:
         print "\nCreated Thread for Receiving Packets"
 
     def recvPacket(self):
-        print "\nReceive Packet Waiting"
-        message, clientAddress = self.mainSocket.recvfrom(2048)
-        packetReceived = RTPPacket("", 0, "", 0, "", 0, 0, "", message)
-        print "\nPacket Received from Address " + str(clientAddress) + "\n\tVirtual Port: " + str(packetReceived.destPort) + "\n\tType: " + packetReceived.packetType + "\n\tSequence Number: " + str(packetReceived.seqNum) + "\n\tACK Number: " + str(packetReceived.ackNum) + "\n\tMessage: " + str(packetReceived.data)
-        socketOfPacketReceived = self.getSocket(packetReceived.destPort)
-        if socketOfPacketReceived is not None:
-            socketOfPacketReceived.packetReceived(packetReceived)
-        self.recvPacket()
-        return
+        while 1:
+            print "\nReceive Packet Waiting"
+            message, clientAddress = self.mainSocket.recvfrom(2048)
+            packetReceived = RTPPacket("", 0, "", 0, "", 0, 0, "", message)
+            print "\nPacket Received from Address " + str(clientAddress) + "\n\tVirtual Port: " + str(packetReceived.destPort) + "\n\tType: " + packetReceived.packetType + "\n\tSequence Number: " + str(packetReceived.seqNum) + "\n\tACK Number: " + str(packetReceived.ackNum) + "\n\tMessage: " + str(packetReceived.data)
+            socketOfPacketReceived = self.getSocket(packetReceived.destPort)
+            if socketOfPacketReceived is not None:
+                socketOfPacketReceived.packetReceived(packetReceived)
 
     ####################
     # SENDING
