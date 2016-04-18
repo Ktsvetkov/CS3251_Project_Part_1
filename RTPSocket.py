@@ -1,39 +1,89 @@
 from RTPPacket import RTPPacket
 from socket import *
-import sys, select
+import sys, select, socket
 
 
 
 
 class RTPSocket:
 
-    def __init__(self, portNumber, mainSocket):
+    def __init__(self, portNumber, socketManager):
         self.portNumber = portNumber
-        self.mainSocket = mainSocket
+        self.socketManager = socketManager
+        self.srcIP = "127.0.0.1"#str(socket.gethostbyname(socket.getfqdn()))
 
-    def getPortNumber(self):
-        return self.portNumber
+        self.hasData = 0
+        self.isSending = 0
+        self.isReceiving = 0
 
-    def connect(self):
-       "Send packet with data bits for connect"
-       return
+        self.incomingConnectionIP = ""
+        self.incomingConnectionPort = 0
+        self.outgoingConnectionIP = ""
+        self.outgoingConnectionPort = 0
 
-    def sendPacket(self, packetToSend):
-        "sends RTPPacket to where it should go"
-        print "Sent Packet Called"
-        portToSendTo = 8591
-        if self.mainSocket.getsockname()[1] == 8591:
-            portToSendTo = 8592
-        print "\nPacket Sent to port " + str(packetToSend.destPort) + "\n\tType: " + packetToSend.packetType + "\n\tSequence Number: " + str(packetToSend.seqNum) + "\n\tACK Number: " + str(packetToSend.ackNum) + "\n\tMessage: " + packetToSend.data
-        self.mainSocket.sendto(packetToSend.getFileToSend(),(packetToSend.destIP, portToSendTo))
-        return
+        self.dataToSend = []
+        self.dataReceived = []
+        self.windowSize = 1
 
-    def recvPacket(self):
-        "return packet deciphered from data bits"
-        while 1:
-            message, clientAddress = self.mainSocket.recvfrom(2048)
-            packetReceived = RTPPacket("", 0, 0, "", 0, 0, "", message)
-            if packetReceived.destPort == self.portNumber:
-                print "\nPacket Received at port " + str(packetReceived.destPort) + "\n\tType: " + packetReceived.packetType + "\n\tSequence Number: " + str(packetReceived.seqNum) + "\n\tACK Number: " + str(packetReceived.ackNum) + "\n\tMessage: " + packetReceived.data
-                return packetReceived
+    def packetReceived(self, packetReceived):
+
+        #Receiving Methods
+        if packetReceived.packetType == "connect":
+            self.isReceiving = 1
+            self.incomingConnectionIP = packetReceived.srcIP
+            self.incomingConnectionPort = packetReceived.srcPort
+            packetToSend = RTPPacket(packetReceived.srcIP, packetReceived.srcPort, self.srcIP, packetReceived.destPort, "accept", packetReceived.seqNum, packetReceived.ackNum + 1, "")
+
+            self.socketManager.sendPacket(packetToSend)
+
+        elif packetReceived.packetType == "data":
+            self.dataReceived.append(packetReceived.data)
+            packetToSend = RTPPacket(packetReceived.srcIP, packetReceived.srcPort, self.srcIP, packetReceived.destPort, "ack", packetReceived.seqNum, packetReceived.ackNum + 1, "")
+
+            self.socketManager.sendPacket(packetToSend)
+
+        elif packetReceived.packetType == "closereceiver":
+            self.isReceiving = 0
+            self.hasData = 1
+            self.incomingConnectionIP = ""
+            self.incomingConnectionPort = 0
+            packetToSend = RTPPacket(packetReceived.srcIP, packetReceived.srcPort, self.srcIP, packetReceived.destPort, "closesender", 0, 0, "")
+
+            self.socketManager.sendPacket(packetToSend)
+
+        #Sender Methods
+        elif packetReceived.packetType == "accept":
+            dataChunkToSend = self.dataToSend[packetReceived.seqNum]
+            packetToSend = RTPPacket(packetReceived.srcIP, packetReceived.srcPort, self.srcIP, packetReceived.destPort, "data", packetReceived.seqNum + 1, packetReceived.ackNum, dataChunkToSend)
+
+            self.socketManager.sendPacket(packetToSend)
+
+        elif packetReceived.packetType == "ack":
+            if packetReceived.seqNum < len(self.dataToSend):
+                dataChunkToSend = self.dataToSend[packetReceived.seqNum]
+                packetToSend = RTPPacket(packetReceived.srcIP, packetReceived.srcPort, self.srcIP, packetReceived.destPort, "data", packetReceived.seqNum + 1, packetReceived.ackNum, dataChunkToSend)
+            else:
+                packetToSend = RTPPacket(packetReceived.srcIP, packetReceived.srcPort, self.srcIP, packetReceived.destPort, "closereceiver", 0, 0, "")
+
+            self.socketManager.sendPacket(packetToSend)
+
+        elif packetReceived.packetType == "closesender":
+            self.isSending = 0
+            self.dataToSend = []
+            self.outgoingConnectionIP = ""
+            self.outgoingConnectionPort = 0
+
+
+    def sendData(self, dataToSend, destIP, destPort):
+        self.isSending = 1
+        self.outgoingConnectionIP = destIP
+        self.outgoingConnectionPort = destPort
+        self.dataToSend = dataToSend
+        packetToSend = RTPPacket(destIP, destPort, self.srcIP, self.portNumber, "connect", 0, 0, "")
+
+        self.socketManager.sendPacket(packetToSend)
+
+
+
+
 

@@ -6,9 +6,6 @@ import socket
 from RTPSocketManager import RTPSocketManager
 from RTPSocket import RTPSocket
 from RTPPacket import RTPPacket
-from RTPClient import RTPClient
-from RTPServer import RTPServer
-
 
 ########################################
 # BUTTON FUNCTIONS
@@ -17,15 +14,9 @@ from RTPServer import RTPServer
 def chooseFile():
     fileLocationPath.set(filedialog.askopenfilename())
 
-#def createSendFileThread():
-#    sendFileThread = Thread(target=sendFile, args=())
-#    sendFileThread.daemon = True
-#    sendFileThread.start()
-#    #thread.start_new_thread(sendFile, ());
-
 def sendFile():
     fileToSend = open(fileLocationPath.get(), 'r+')
-    dataArray = RTPClient.getDataArrayToSend(fileToSend)
+    dataArray = getDataArrayToSend(fileToSend)
     fileToSend.close()
     socketToUse = rtpSocketManager.getSocket(int(portToUse.get()))
     if socketToUse is None:
@@ -33,20 +24,28 @@ def sendFile():
             socketToUse = rtpSocketManager.createSocket(int(portToUse.get()))
         else:
             socketToUse = rtpSocketManager.createSocket()
-        createReceiveFileTread(socketToUse)
         portsUsedStringVar.set(rtpSocketManager.getPortsUsedString())
-    RTPClient.sendData(socketToUse, dataArray, ipToSendTo.get(), int(portToSendTo.get()))
+    socketToUse.sendData(dataArray, ipToSendTo.get(), int(portToSendTo.get()))
 
-#def createReceiveFileTread(socketToReceiveFileAt):
-#    receiveFileThread = Thread(target=receiveFile, args=(socketToReceiveFileAt))
-#    receiveFileThread.daemon = True
-#    receiveFileThread.start()
-#    #thread.start_new_thread(receiveFile, (socketToReceiveFileAt, ));
+def getDataArrayToSend(fileToSend):
+    dataArray = []
+    while 1:
+        chunk = fileToSend.read(128) #128 bit chunks
+        dataArray.append(chunk)
+        if not chunk:
+            break
+    return dataArray
 
-def receiveFile(socketToReceiveFileAt):
-    dataArray = RTPServer.receiveData(socketToReceiveFileAt)
-    print "Data Array of Length: " + str(len(dataArray))
-    RTPServer.writeDataArrayToFile(dataArray)
+# def createReceiveFileTread(socketToReceiveFileAt):
+#     receiveFileThread = Thread(target=receiveFile, args=(socketToReceiveFileAt))
+#     receiveFileThread.daemon = True
+#     receiveFileThread.start()
+#     thread.start_new_thread(receiveFile, (socketToReceiveFileAt, ));
+
+# def receiveFile(socketToReceiveFileAt):
+#     dataArray = RTPServer.receiveData(socketToReceiveFileAt)
+#     print "Data Array of Length: " + str(len(dataArray))
+#     RTPServer.writeDataArrayToFile(dataArray)
 
 ########################################
 # CHECK PARAMETERS
@@ -76,7 +75,6 @@ else:
     sys.exit()
 
 firstSocket = rtpSocketManager.createSocket()
-createReceiveFileTread(firstSocket)
 
 ########################################
 # INITIALIZATION
@@ -122,7 +120,7 @@ chooseFileButton = Button(content, text="Choose File", anchor=CENTER, padx=10, p
 
 emptyFrame2 = Frame(content, height=20, width=400)
 
-sendFileButton = Button(content, text="SEND", anchor=CENTER, padx=10, pady=5, command= lambda: createSendFileThread())
+sendFileButton = Button(content, text="SEND", anchor=CENTER, padx=10, pady=5, command= lambda: sendFile())
 
 emptyFrame3 = Frame(content, height=20, width=400)
 
