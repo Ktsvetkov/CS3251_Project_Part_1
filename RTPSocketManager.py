@@ -29,6 +29,11 @@ class RTPSocketManager:
         self.mainSocket.bind(('127.0.0.1', 8592))
         self.startReceivingPackets()
 
+    def bindUDP(self, ipAddress, udpPortNumber):
+        self.mainSocket.bind((ipAddress, udpPortNumber))
+        self.startReceivingPackets()
+        print 'RTPSocketManager bound to IP: ' + ipAddress + " Port: " + str(udpPortNumber)
+
     ####################
     # SOCKET MANAGEMENT
     ####################
@@ -45,7 +50,7 @@ class RTPSocketManager:
             if portToAssign == -1:
                 print "All 100,000 port numbers taken"
             else:
-                print "Created socket with port: ", portToAssign
+                print "Created virtual socket with port: ", portToAssign
             self.sockets.append(socketToReturn)
             return socketToReturn
         else:

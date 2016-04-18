@@ -10,11 +10,14 @@ class RTPSocket:
     def __init__(self, portNumber, socketManager):
         self.portNumber = portNumber
         self.socketManager = socketManager
-        self.srcIP = "127.0.0.1"#str(socket.gethostbyname(socket.getfqdn()))
+        self.srcIP = str(socket.gethostbyname(socket.getfqdn()))
 
         self.hasData = 0
         self.isSending = 0
         self.isReceiving = 0
+
+        self.readyForGet = 0
+        self.fileToGet = ""
 
         self.incomingConnectionIP = ""
         self.incomingConnectionPort = 0
@@ -73,17 +76,25 @@ class RTPSocket:
             self.outgoingConnectionIP = ""
             self.outgoingConnectionPort = 0
 
+        elif packetReceived.packetType == "request":
+            self.readyForGet = 1
+            self.fileToGet = packetReceived.data
+            self.outgoingConnectionIP = packetReceived.srcIP
+            self.outgoingConnectionPort = packetReceived.srcPort
 
-    def sendData(self, dataToSend, destIP, destPort):
-        self.isSending = 1
-        self.outgoingConnectionIP = destIP
-        self.outgoingConnectionPort = destPort
-        self.dataToSend = dataToSend
-        packetToSend = RTPPacket(destIP, destPort, self.srcIP, self.portNumber, "connect", 0, 0, "")
-
-        self.socketManager.sendPacket(packetToSend)
-
-
+    def sendData(self, typeOfSend, destIP, destPort, dataToSend):
+        if typeOfSend == "post":
+            self.readyForGet = 0
+            self.fileToGet = ""
+            self.isSending = 1
+            self.outgoingConnectionIP = destIP
+            self.outgoingConnectionPort = destPort
+            self.dataToSend = dataToSend
+            packetToSend = RTPPacket(destIP, destPort, self.srcIP, self.portNumber, "connect", 0, 0, "")
+            self.socketManager.sendPacket(packetToSend)
+        elif typeOfSend == "get":
+            packetToSend = RTPPacket(destIP, destPort, self.srcIP, self.portNumber, "request", 0, 0, dataToSend[0])
+            self.socketManager.sendPacket(packetToSend)
 
 
 
