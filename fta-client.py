@@ -3,6 +3,8 @@ from RTPSocketManager import RTPSocketManager
 from RTPPacket import RTPPacket
 import sys, select, socket
 import threading
+import time
+from termios import tcflush, TCIFLUSH
 
 
 def getDataArrayToSend(fileToSend):
@@ -15,20 +17,26 @@ def getDataArrayToSend(fileToSend):
     return dataArray
 
 def checkForDownloadedDataThread():
-    threading.Thread(target=checkForDownloadedData).start()
+    checkForDataThread = threading.Thread(target=checkForDownloadedData)
+    checkForDataThread.daemon = True
+    checkForDataThread.start()
     print "\nCreated Thread for Checking for Downloads"
 
 def checkForDownloadedData():
+    global askForInput
     while 1:
         for socketUsed in socketManager.sockets:
             if socketUsed.hasData == 1:
-                fileToReceive = open(fileName, 'wb+')
+                fileToReceive = open("get_" + socketUsed.dataReceivedName, 'wb+')
                 for dataChunk in socketUsed.dataReceived:
                     fileToReceive.write(dataChunk)
                 fileToReceive.flush()
                 fileToReceive.close()
                 socketUsed.dataReceived = []
                 socketUsed.hasData = 0
+                socketUsed.packetReceivedName = ""
+                askForInput = 0
+        time.sleep(1)
 
 ########################################
 # CHECK PARAMETERS & make socketManager
@@ -37,6 +45,9 @@ def checkForDownloadedData():
 ipAddress = ""
 udpPort = -1
 maxWindowSize = -1
+fileName = ""
+askForInput = 0
+
 
 try:
     if len(sys.argv) != 3:
@@ -67,27 +78,28 @@ socketManager.bindUDP(str(socket.gethostbyname(socket.getfqdn())), 8592)
 socket = socketManager.createSocket()
 
 
-fileName = "get_"
-
 #thread to check for file download
 checkForDownloadedDataThread()
-
-askForInput = 0
 
 while 1:
     if askForInput == 0:
         askForInput = 1
+
+        tcflush(sys.stdin, TCIFLUSH)
         action = raw_input("\nPlease enter command: \n")
         actionArray = action.split(" ")
         if actionArray[0] == "disconnect":
             break
         elif actionArray[0] == "get":
-            fileName = fileName + actionArray[1]
+            fileName = "get_" + actionArray[1]
             socket.sendData("get", ipAddress, 99999, [actionArray[1]])
         elif actionArray[0] == "get-post":
-            print "Not yet supported"
-            askForInput = 0
-
-
+            fileToSend = open(actionArray[2], 'rb+')
+            dataArray = getDataArrayToSend(fileToSend)
+            socket.sendData("post", ipAddress, 99999, dataArray, actionArray[2])
+            fileName = "get_" + actionArray[1]
+            socket.sendData("get", ipAddress, 99999, [actionArray[1]])
+    else:
+        time.sleep(1)
 
 

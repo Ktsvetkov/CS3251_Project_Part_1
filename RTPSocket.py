@@ -25,7 +25,9 @@ class RTPSocket:
         self.outgoingConnectionPort = 0
 
         self.dataToSend = []
+        self.dataSentName = ""
         self.dataReceived = []
+        self.dataReceivedName = ""
         self.windowSize = 1
 
     def packetReceived(self, packetReceived):
@@ -48,6 +50,7 @@ class RTPSocket:
         elif packetReceived.packetType == "closereceiver":
             self.isReceiving = 0
             self.hasData = 1
+            self.dataReceivedName = packetReceived.data
             self.incomingConnectionIP = ""
             self.incomingConnectionPort = 0
             packetToSend = RTPPacket(packetReceived.srcIP, packetReceived.srcPort, self.srcIP, packetReceived.destPort, "closesender", 0, 0, "")
@@ -66,13 +69,14 @@ class RTPSocket:
                 dataChunkToSend = self.dataToSend[packetReceived.seqNum]
                 packetToSend = RTPPacket(packetReceived.srcIP, packetReceived.srcPort, self.srcIP, packetReceived.destPort, "data", packetReceived.seqNum + 1, packetReceived.ackNum, dataChunkToSend)
             else:
-                packetToSend = RTPPacket(packetReceived.srcIP, packetReceived.srcPort, self.srcIP, packetReceived.destPort, "closereceiver", 0, 0, "")
+                packetToSend = RTPPacket(packetReceived.srcIP, packetReceived.srcPort, self.srcIP, packetReceived.destPort, "closereceiver", 0, 0, self.dataToSendName)
 
             self.socketManager.sendPacket(packetToSend)
 
         elif packetReceived.packetType == "closesender":
             self.isSending = 0
             self.dataToSend = []
+            self.dataToSendName = ""
             self.outgoingConnectionIP = ""
             self.outgoingConnectionPort = 0
 
@@ -82,7 +86,7 @@ class RTPSocket:
             self.outgoingConnectionIP = packetReceived.srcIP
             self.outgoingConnectionPort = packetReceived.srcPort
 
-    def sendData(self, typeOfSend, destIP, destPort, dataToSend):
+    def sendData(self, typeOfSend, destIP, destPort, dataToSend, dataToSendName=""):
         if typeOfSend == "post":
             self.readyForGet = 0
             self.fileToGet = ""
@@ -90,6 +94,7 @@ class RTPSocket:
             self.outgoingConnectionIP = destIP
             self.outgoingConnectionPort = destPort
             self.dataToSend = dataToSend
+            self.dataToSendName = dataToSendName
             packetToSend = RTPPacket(destIP, destPort, self.srcIP, self.portNumber, "connect", 0, 0, "")
             self.socketManager.sendPacket(packetToSend)
         elif typeOfSend == "get":

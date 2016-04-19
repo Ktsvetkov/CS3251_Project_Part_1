@@ -2,8 +2,8 @@ from RTPSocket import RTPSocket
 from RTPSocketManager import RTPSocketManager
 from RTPPacket import RTPPacket
 import sys, select, socket
-
-
+import threading
+import time
 
 def getDataArrayToSend(fileToSend):
     dataArray = []
@@ -14,6 +14,25 @@ def getDataArrayToSend(fileToSend):
             break
     return dataArray
 
+def checkForDownloadedDataThread():
+    checkForDataThread = threading.Thread(target=checkForDownloadedData)
+    checkForDataThread.daemon = True
+    checkForDataThread.start()
+    print "\nCreated Thread for Checking for Downloads"
+
+def checkForDownloadedData():
+    while 1:
+        for socketUsed in socketManager.sockets:
+            if socketUsed.hasData == 1:
+                fileToReceive = open("post_" + socketUsed.dataReceivedName, 'wb+')
+                for dataChunk in socketUsed.dataReceived:
+                    fileToReceive.write(dataChunk)
+                fileToReceive.flush()
+                fileToReceive.close()
+                socketUsed.dataReceived = []
+                socketUsed.hasData = 0
+                socketUsed.packetReceivedName = ""
+        time.sleep(1)
 
 
 ########################################
@@ -49,13 +68,17 @@ socketManager = RTPSocketManager()
 socketManager.bindUDP(str(socket.gethostbyname(socket.getfqdn())), udpPort)
 socket = socketManager.createSocket()
 
+
+#thread to check for file download
+checkForDownloadedDataThread()
+
 while 1:
     for socketUsed in socketManager.sockets:
         if socketUsed.readyForGet == 1:
             print "Detected a socket ready for a request"
             fileToSend = open(socketUsed.fileToGet, 'rb+')
             dataArray = getDataArrayToSend(fileToSend)
-            socketUsed.sendData("post", socketUsed.outgoingConnectionIP, socketUsed.outgoingConnectionPort, dataArray)
-
+            socketUsed.sendData("post", socketUsed.outgoingConnectionIP, socketUsed.outgoingConnectionPort, dataArray, socketUsed.fileToGet)
+    time.sleep(1)
 
 

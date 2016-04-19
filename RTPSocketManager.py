@@ -71,12 +71,14 @@ class RTPSocketManager:
     # RECEIVING
     ####################
     def startReceivingPackets(self):
-        threading.Thread(target=self.recvPacket).start()
+        receivePacketsThread = threading.Thread(target=self.recvPacket)
+        receivePacketsThread.daemon = True
+        receivePacketsThread.start()
         print "\nCreated Thread for Receiving Packets"
 
     def recvPacket(self):
         while 1:
-            print "\nReceive Packet Waiting"
+            print "\nWaiting to Receive Packet..."
             message, clientAddress = self.mainSocket.recvfrom(2048)
             packetReceived = RTPPacket("", 0, "", 0, "", 0, 0, "", message)
             print "\nPacket Received from Address " + str(clientAddress) + "\n\tVirtual Port: " + str(packetReceived.destPort) + "\n\tType: " + packetReceived.packetType + "\n\tSequence Number: " + str(packetReceived.seqNum) + "\n\tACK Number: " + str(packetReceived.ackNum) + "\n\tMessage: " + str(packetReceived.data)
