@@ -25,18 +25,13 @@ def checkForDownloadedDataThread():
 def checkForDownloadedData():
     global askForInput
     while 1:
-        for socketUsed in socketManager.sockets:
-            if socketUsed.hasData == 1:
-                fileToReceive = open("get_" + socketUsed.dataReceivedName, 'wb+')
-                for dataChunk in socketUsed.dataReceived:
-                    fileToReceive.write(dataChunk)
-                fileToReceive.flush()
-                fileToReceive.close()
-                socketUsed.dataReceived = []
-                socketUsed.hasData = 0
-                socketUsed.packetReceivedName = ""
-                askForInput = 0
-        time.sleep(1)
+        ipAddressReceived, portNumberReceived,  dataArrayToDownload, dataName = socketGet.recvData()
+        fileToReceive = open("get_" + dataName, 'wb+')
+        for dataChunk in dataArrayToDownload:
+            fileToReceive.write(dataChunk)
+        fileToReceive.flush()
+        fileToReceive.close()
+        askForInput = 0
 
 ########################################
 # CHECK PARAMETERS & make socketManager
@@ -45,7 +40,6 @@ def checkForDownloadedData():
 ipAddress = ""
 udpPort = -1
 maxWindowSize = -1
-fileName = ""
 askForInput = 0
 
 
@@ -73,14 +67,16 @@ except e:
 
 ########################################
 
+#socket() bind()
 socketManager = RTPSocketManager()
-socketManager.bindUDP(str(socket.gethostbyname(socket.getfqdn())), 8592)
-socket = socketManager.createSocket()
-
+socketManager.bindUDP(str(socket.gethostbyname(socket.getfqdn())), 8591)
+socketGet = socketManager.createSocket(99999)
+socketPost = socketManager.createSocket(99998)
 
 #thread to check for file download
 checkForDownloadedDataThread()
 
+#send get request or file based off of commands
 while 1:
     if askForInput == 0:
         askForInput = 1
@@ -91,15 +87,21 @@ while 1:
         if actionArray[0] == "disconnect":
             break
         elif actionArray[0] == "get":
-            fileName = "get_" + actionArray[1]
-            socket.sendData("get", ipAddress, 99999, [actionArray[1]])
+            socketGet.sendData(ipAddress, 99999, ["get"], actionArray[1])
+        # elif actionArray[0] == "post":
+        #     fileToSend = open(actionArray[1], 'rb+')
+        #     dataArray = getDataArrayToSend(fileToSend)
+        #     socketPost.sendData(ipAddress, 99998, dataArray, actionArray[1])
         elif actionArray[0] == "get-post":
             fileToSend = open(actionArray[2], 'rb+')
             dataArray = getDataArrayToSend(fileToSend)
-            socket.sendData("post", ipAddress, 99999, dataArray, actionArray[2])
-            fileName = "get_" + actionArray[1]
-            socket.sendData("get", ipAddress, 99999, [actionArray[1]])
+            socketPost.sendData(ipAddress, 99998, dataArray, actionArray[2])
+            time.sleep(1)
+            socketGet.sendData(ipAddress, 99999, ["get"], actionArray[1])
     else:
         time.sleep(1)
+
+
+
 
 

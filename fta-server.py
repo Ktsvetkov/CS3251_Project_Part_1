@@ -21,19 +21,16 @@ def checkForDownloadedDataThread():
     print "\nCreated Thread for Checking for Downloads"
 
 def checkForDownloadedData():
+    global askForInput
     while 1:
-        for socketUsed in socketManager.sockets:
-            if socketUsed.hasData == 1:
-                fileToReceive = open("post_" + socketUsed.dataReceivedName, 'wb+')
-                for dataChunk in socketUsed.dataReceived:
-                    fileToReceive.write(dataChunk)
-                fileToReceive.flush()
-                fileToReceive.close()
-                socketUsed.dataReceived = []
-                socketUsed.hasData = 0
-                socketUsed.packetReceivedName = ""
-        time.sleep(1)
-
+        ipAddressReceived, portNumberReceived,  dataArrayToDownload, dataName = socketPost.recvData()
+        if dataArrayToDownload[0] != "get":
+            fileToReceive = open("post_" + dataName, 'wb+')
+            for dataChunk in dataArrayToDownload:
+                fileToReceive.write(dataChunk)
+            fileToReceive.flush()
+            fileToReceive.close()
+            askForInput = 0
 
 ########################################
 # CHECK PARAMETERS & make socketManager
@@ -64,21 +61,22 @@ except e:
 
 ########################################
 
+#socket() bind()
 socketManager = RTPSocketManager()
 socketManager.bindUDP(str(socket.gethostbyname(socket.getfqdn())), udpPort)
-socket = socketManager.createSocket()
-
+socketGet = socketManager.createSocket(99999)
+socketPost = socketManager.createSocket(99998)
 
 #thread to check for file download
 checkForDownloadedDataThread()
 
+#send responses to get requests
 while 1:
-    for socketUsed in socketManager.sockets:
-        if socketUsed.readyForGet == 1:
-            print "Detected a socket ready for a request"
-            fileToSend = open(socketUsed.fileToGet, 'rb+')
-            dataArray = getDataArrayToSend(fileToSend)
-            socketUsed.sendData("post", socketUsed.outgoingConnectionIP, socketUsed.outgoingConnectionPort, dataArray, socketUsed.fileToGet)
-    time.sleep(1)
+    ipAddress, portNumber, dataArrayReceived, fileName = socketGet.recvData()
+    if dataArrayReceived[0] == "get":
+        fileToSend = open(fileName, 'rb+')
+        dataArray = getDataArrayToSend(fileToSend)
+        socketPost.sendData(ipAddress, portNumber, dataArray, fileName)
+
 
 

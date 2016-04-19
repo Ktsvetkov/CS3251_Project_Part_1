@@ -11,6 +11,7 @@ class RTPSocketManager:
     # INITIALIZATION
     ####################
     def __init__(self):
+        self.debug = 1
         self.portsAvailable = []
         self.portsTaken = []
         self.sockets = []
@@ -18,21 +19,14 @@ class RTPSocketManager:
         while len(self.portsAvailable) < 100000:
             self.portsAvailable.append(portAssigner)
             portAssigner += 1
-        print 'RTPSocketManager created'
+        if self.debug == 1: print 'RTPSocketManager created'
         self.mainSocket = socket(AF_INET, SOCK_DGRAM, 0)
 
-    def bindServer(self):
-        self.mainSocket.bind(('127.0.0.1', 8591))
-        self.startReceivingPackets()
-
-    def bindClient(self):
-        self.mainSocket.bind(('127.0.0.1', 8592))
-        self.startReceivingPackets()
-
+    #8592 or 8591 recommended
     def bindUDP(self, ipAddress, udpPortNumber):
         self.mainSocket.bind((ipAddress, udpPortNumber))
         self.startReceivingPackets()
-        print 'RTPSocketManager bound to IP: ' + ipAddress + " Port: " + str(udpPortNumber)
+        if self.debug == 1: print 'RTPSocketManager bound to IP: ' + ipAddress + " Port: " + str(udpPortNumber)
 
     ####################
     # SOCKET MANAGEMENT
@@ -48,9 +42,9 @@ class RTPSocketManager:
             #do something with port number
             socketToReturn = RTPSocket(portToAssign, self)
             if portToAssign == -1:
-                print "All 100,000 port numbers taken"
+                if self.debug == 1: print "All 100,000 port numbers taken"
             else:
-                print "Created virtual socket with port: ", portToAssign
+                if self.debug == 1: print "Created virtual socket with port: ", portToAssign
             self.sockets.append(socketToReturn)
             return socketToReturn
         else:
@@ -60,7 +54,8 @@ class RTPSocketManager:
                 self.sockets.append(socketToReturn)
                 return socketToReturn
             else:
-                print "Socket Already Taken"
+                if self.debug == 1: print "Socket Already Taken"
+
 
     def getSocket(self, portNumber):
         for socket in self.sockets:
@@ -74,14 +69,14 @@ class RTPSocketManager:
         receivePacketsThread = threading.Thread(target=self.recvPacket)
         receivePacketsThread.daemon = True
         receivePacketsThread.start()
-        print "\nCreated Thread for Receiving Packets"
+        if self.debug == 1: print "\nCreated Thread for Receiving Packets"
 
     def recvPacket(self):
         while 1:
-            print "\nWaiting to Receive Packet..."
+            if self.debug == 1: print "\nWaiting to Receive Packet..."
             message, clientAddress = self.mainSocket.recvfrom(2048)
             packetReceived = RTPPacket("", 0, "", 0, "", 0, 0, "", message)
-            print "\nPacket Received from Address " + str(clientAddress) + "\n\tVirtual Port: " + str(packetReceived.destPort) + "\n\tType: " + packetReceived.packetType + "\n\tSequence Number: " + str(packetReceived.seqNum) + "\n\tACK Number: " + str(packetReceived.ackNum) + "\n\tMessage: " + str(packetReceived.data)
+            if self.debug == 1: print "\nPacket Received from Address " + str(clientAddress) + "\n\tVirtual Port: " + str(packetReceived.destPort) + "\n\tType: " + packetReceived.packetType + "\n\tSequence Number: " + str(packetReceived.seqNum) + "\n\tACK Number: " + str(packetReceived.ackNum) + "\n\tMessage: " + str(packetReceived.data)
             socketOfPacketReceived = self.getSocket(packetReceived.destPort)
             if socketOfPacketReceived is not None:
                 socketOfPacketReceived.packetReceived(packetReceived)
@@ -94,24 +89,9 @@ class RTPSocketManager:
         portToSendTo = 8591
         if self.mainSocket.getsockname()[1] == 8591:
             portToSendTo = 8592
-        print "\nPacket Sent to IP " + str(packetToSend.destIP) + "\n\tReal Port: " + str(portToSendTo) + "\n\tVirtual Port: " + str(packetToSend.destPort) + "\n\tType: " + packetToSend.packetType + "\n\tSequence Number: " + str(packetToSend.seqNum) + "\n\tACK Number: " + str(packetToSend.ackNum) + "\n\tMessage: " + str(packetToSend.data)
+        if self.debug == 1: print "\nPacket Sent to IP " + str(packetToSend.destIP) + "\n\tReal Port: " + str(portToSendTo) + "\n\tVirtual Port: " + str(packetToSend.destPort) + "\n\tType: " + packetToSend.packetType + "\n\tSequence Number: " + str(packetToSend.seqNum) + "\n\tACK Number: " + str(packetToSend.ackNum) + "\n\tMessage: " + str(packetToSend.data)
         self.mainSocket.sendto(packetToSend.getFileToSend(),(packetToSend.destIP, portToSendTo))
         return
 
 
-    ####################
-    # FOR GUI
-    ####################
-    def getPortsUsed(self):
-        return self.portsTaken
-
-    def getPortsUsedString(self):
-        portsUsedArray = self.getPortsUsed()
-        portsUsedString = ""
-        for usedPort in portsUsedArray:
-            portsUsedString = portsUsedString + str(usedPort) + ", "
-        if portsUsedString == "":
-            return portsUsedString
-        else:
-            return portsUsedString[:-1]
 
