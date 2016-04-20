@@ -66,6 +66,8 @@ socketManager = RTPSocketManager()
 socketManager.bindUDP(str(socket.gethostbyname(socket.getfqdn())), udpPort)
 socketGet = socketManager.createSocket(99999)
 socketPost = socketManager.createSocket(99998)
+socketGet.windowSize = maxWindowSize
+socketPost.windowSize = maxWindowSize
 
 #thread to check for file download
 checkForDownloadedDataThread()
@@ -76,7 +78,7 @@ while 1:
     if dataArrayReceived[0] == "get":
         fileToSend = open(fileName, 'rb+')
         dataArray = getDataArrayToSend(fileToSend)
-        socketPost.sendData(ipAddress, portNumber, dataArray, fileName)
+        socketGet.sendData(ipAddress, portNumber, dataArray, fileName)
 
 
 

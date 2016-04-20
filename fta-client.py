@@ -72,6 +72,8 @@ socketManager = RTPSocketManager()
 socketManager.bindUDP(str(socket.gethostbyname(socket.getfqdn())), 8591)
 socketGet = socketManager.createSocket(99999)
 socketPost = socketManager.createSocket(99998)
+socketGet.windowSize = maxWindowSize
+socketPost.windowSize = maxWindowSize
 
 #thread to check for file download
 checkForDownloadedDataThread()
